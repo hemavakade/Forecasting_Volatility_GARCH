@@ -1,0 +1,187 @@
+---
+title: "Forecasting Volatility using GARCH model"
+author: "Hemalatha Vakade"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Abstract** - The goal of this project was to understand advanced Time Series topic, GARCH and apply it to a financial data. The data set is the closing prices for S&P 500 stock index obtained from Yahoo finance. I used GARCH(1,1) to model the volatility of the returns of the closing prices. The final model had an AIC of -6.6856 and RMSE of 0.08.
+
+**Motivation** - Time series analysis is an essential tool for analyzing financial data and GARCH is an interesting and complicated topic to understand. The initial motivation for this work was to forecast volatility using Neural Networks and compare it's performance to GARCH model. Due to time constraint the project was then limited to forecasting volatility using GARCH model.
+
+**Introduction** - Volatility is the underlying risk associated with a certain asset say a stock. The variance of a stock over a time can be calculated. Mathematically, volatility is expressed as the square root of the variance. If the price of a stock is varying a lot and spread over time then the prices of the stock is far from its mean, therefore the variance is huge and so is the volatility. But if the spread of the price is not so much then the price is stable and volatility is low. 
+
+Volatility forecasting of financial data is useful in Risk Management, Asset Allocation and Building strategy for stock market trading. In each of the cases minimizing losses is essential. The market ,cannot be controlled but can be assessed before taking decision. Understanding the underlying risk associated with an asset, say stock, provides a great advantage to industries. They can choose to liquidate it or hold on to it to achieve a better profit margin. 
+
+Among the various models available to model volatility GARCH is one of the popular models used to forecast volatility. 
+
+*ARCH Model* - ARCH model was developed by Robert Engle[1] in 1986 for which he even won the Nobel Prize in 2003. His path breaking discovery for analyzing the underlying volatility of financial market prices set the seed for statistical models that could be used to calculate risks, enable asset allocation and develop effective trading strategies.
+
+Robert Engle in his original paper stated the ARCH process are mean zero, serially uncorrelated processes with noncostant conditional variances conditional on the previous but, constant conditional variances. A regression model is introduced along with disturbances to model the ARCH process.[1]
+
+For a certain stock with Closing Prices, $P_1, P_2, \dots P_{t-1}, P_t$ the returns can be calculated as 
+
+(1) $r_t = log(P_{t-1}) - log(P_t)$
+
+The returns can be written as,
+
+(2) $r_t = \mu + a_t$
+
+where,
+
+*$\mu$ is the mean of the returns*
+*$a_t$ is the residual at time t*
+
+The following equation is used to describe an ARCH(1) process.
+
+(3) $\sigma_t^2 =  \omega + \alpha a_{t-1}^{2}$
+
+or 
+
+(4) $a_t^2 = \omega + \alpha a_{t-1}^2 + v_t$
+
+
+where,
+
+
+*$\sigma_t^2$ is the variance of the residual at time t*
+
+*$\omega$, $\alpha$ are the coefficients*
+
+*Also, ensure $\omega > 0$ and $\alpha_1 \geq 0$ so that the variance is not negative$*
+
+*$v_t$ is the disturbance (as stated in Engle's paper) introduced which has zero mean andis uncorrelated series*
+
+For an ARCH(p) process eq.(3) can be written as 
+
+(5) $\sigma_t^2 =  \omega + \sum_{i=1}^{p}\alpha_i a_{t-i}^{2}$
+
+*The p here is called the order of the ARCH process and is the number of past lags on which the variance of current time period is dependent*
+
+As seen the ARCH process is nothing but a regression model to provide a forecast of the variance or volatility of the next time period given the previous information of variance of the stock. In fact ARCH can be thought of a AR(1) model on the squared residuals
+
+The ARCH, however, forecasted based only the previous squared residuals. This could produce high-frequency oscillation coming in short bursts[2]. To provide more persistence to the volatility forecast Bookseller[3] introduced a Generalized Autoregressive Conditional Heteroskedasticity (GARCH). This model is dependent not only the past residuals but also the past forecasts.
+
+*GARCH model* - A GARCH(1,1) model is given by,
+
+
+(6) $\sigma_t^2 =  \omega + \alpha a_{t-1}^{2} + \beta \sigma_{t-1}^2$
+
+
+where,
+
+*$\omega , \alpha , \beta$ are the coefficients of the model*
+
+*Also, $\omega > 0$, $\alpha > 0$, $\beta>0$ and $\alpha + \beta < 1$ so that the forecast is a blend of the last period's squared term and forecast.*
+
+*$a_{t-1}$ is residual at time (t-1)*
+
+*$\sigma_{t-1}$ is the last value of the volatility at time (t-1)*
+
+GARCH model is similar to an ARMA(1,1) process modeled on squared residuals of the returns.
+
+For GARCH(p,q) model,
+
+(7) $\sigma_t^2 =  \omega + \sum_{i=1}^{p}\alpha_i a_{t-i}^{2} + \sum_{j=1}^{q} \beta_j \sigma_{t-j}^2$
+
+
+*Here p and q are called as the order of GARCH model. p refers to the lag in residuals and q refers to past lag in volatility of the returns.*
+
+**Data** - For this work S&P 500 stock index from Yahoo finance was used. The ticker for S&P 500 is *^GSPC*. A total of 8563 data points from 03-Jan-1983 to 14-Dec-2016 was used. Data was split into training and test set 
+
+
+ **Table-1** | Training | Test |
+------------- | ------------- | ------------- |
+Length | 6165 | 2398 |
+Date Range | 03-Jan-1983 to 08-Jun-2007 | 11-Jun-2007 to 14-Dec-2016  |
+
+
+There were no NAs in the data. Log returns were calculated before feeding into the model.
+
+
+![S&P500 Logged returns.](./Rplot1.png)
+
+
+As we see in the plot there are large variations around the year 1987 and 2008 and few large variations in the middle around 2001. These are intuitive because of the stock crash in 1987, 2008 and the 9/11 attacks effect on the stock market. But the variations are not only present for those years there seems to be an effect after that; like the returns have a "memory" of the previous returns. These clusters that is seen is called volatility clustering. GARCH does a good job at modeling such volatility.
+
+
+**Implementation** - GARCH model was implemented using the `rugarch` package in R[4][5]. The method followed to implement this model is as follows,
+
+* An ARMA model was fit to the model after choosing the best ARMA model based on the AIC corrected value. This was achieved by using `auto.arima` and searching the space given a maximum order of p=6 and q=6.
+
+* Box test and ARCH LM test was performed on the squared residuals and data to make sure that there is an ARCH effect in the squared residuals which have to be fitted with GARCH.
+
+* An instance of GARCH(1,1) was created  which was then fit to the training data. 
+
+* An out-of-sample test that is the test was used to see how the model performs for the data it has not seen.
+
+* Both the training and out-of-sample forecast was standardized annually. This is done by multiply them by $\sqrt(252)$. 252 is the  number of trading days in a year.
+
+* Realized volatility was calculated and plotted against the fitted values. This was calculated using the running standard deviation window of 20 data points.
+
+* 1-ahead forecast was performed on the test set using the coefficient information from the previosuly fitted garch, using the last return values and previous volatility. 
+
+
+**Results** - The best ARMA model chosen by `auto.arima` the following parameters
+
+
+ **Table-2** | AICc | RMSE |      
+------------- | ------------- | ------------- |
+Values | -38905.83 | 0.01029967 |
+
+To get an idea about the auto-correlations in the squared residuals it can be useful to examine the ACF and PACF of the squared residuals.
+
+
+![S&P500 Logged returns.](./Rplot2.png)
+
+
+It is evident that the squared residuals are not white noise but show correlation. To confirm this Ljung-Box test was performed on the squared residuals. The null hypothesis of this test is that there is no serial auto correlation in the data while the alternate hypothesis suggests presence of auto correlation. P-value was found to be less than 0.05 and therefore the null hypothesis is rejected.
+
+ARCH LM test from `FinTS` library in R was performed on the data to check the presence of ARCH effect.
+
+After determining the order of ARMA an instance with desired parameters is used ,in a GARCH spec which is then fit on data and checked against the test data.
+
+Some of the parameters in the fit is as follows
+
+* AIC = -6.6857 
+
+* Distribution model of residuals - Standard -t
+
+* Sign Bias Test- Significant Negative and Joint, faint positive and asymmetric
+ 
+Different distribution models for the residuals were tried out but student -t gave better results when the residuals of the GARCH fit were examined. The person goodness-of-fit test gave low p-values for skewed standard-t and norm
+
+Following is the fit on the realized training volatility. 
+
+
+![Fitted Volatility.](./Rplot3.png)
+
+![Forecast Volatility](./Rplot4.png)
+
+
+\pagebreak
+```{r, echo=FALSE}
+```
+
+We can see that GARCH performs satisfactorily infact in some places (around the 2010) we can see the small difference between the realized and the GARCH fitted volatilities. This is can also be interpreted as GARCH's recovery is faster and "anticipates" an upward trend before the market recovery.
+
+
+**Conclusion** - The take home is that it is important to note that we are modeling the squared residuals of the data through GARCH and the conditional variance attributes to the fact that unlike the residuals from a ARIMA time series the residuals exhibit dramatic variability which is modeled using GARCH. 
+
+
+**Future Work** - Deeper understanding of GARCH is required if this has to be applied on financial time series to build a strategy for prediction. Financial time series is accompanied by various financial terms, so domain knowledge is a plus. I would understand the model better and work on the other flavors of the GARCH. Also compare GARCH model results to results forecasted using LSTM .
+
+**REFERENCES**
+
+[1] Engle, Robert F. "Autoregressive conditional heteroscedasticity with estimates of the variance of United Kingdom inflation." Econometrica: Journal of the Econometric Society (1982): 987-1007.
+
+[2] http://faculty.washington.edu/ezivot/econ589/ch18-garch.pdf
+
+[3] Bollerslev, Tim. "Generalized autoregressive conditional heteroskedasticity." Journal of econometrics 31.3 (1986): 307-327.
+
+[4] Rugarch Vignette, https://cran.r-project.org/web/packages/rugarch/vignettes/Introduction_to_the_rugarch_package.pdf
+
+[5] Rugarch Vignette Example, http://unstarched.net/wp-content/uploads/2013/06/an-example-in-rugarch.pdf
