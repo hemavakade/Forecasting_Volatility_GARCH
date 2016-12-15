@@ -1,4 +1,5 @@
-# Project in Advanced statistics.
+# Forecasting Volatility using GARCH model
+### Project in Advanced statistics.
 
 This project was done as part of my Advanced statistics course in my Data Science Masters curriculum. 
 
